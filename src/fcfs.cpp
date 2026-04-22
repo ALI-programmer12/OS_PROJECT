@@ -1,30 +1,18 @@
-#include "../include/fcfs.h"
+#include "fcfs.h"
 #include <algorithm>
-#include <iostream>
-#include <iomanip>
 using namespace std;
 
-//Sorts processes by arrival time (ascending)
-bool compareArrivalTime(Process a, Process b) {
-    return a.arrivalTime < b.arrivalTime;
-}
-
-void runFCFS(vector<Process>& list) {
-    sort(list.begin(), list.end(), compareArrivalTime);
+void firstComeFirstServe(Process p[], int n) {
+    // sort by arrival time
+    for (int i = 0; i < n-1; i++)
+        for (int j = i+1; j < n; j++)
+            if (p[j].at < p[i].at) { Process tmp=p[i]; p[i]=p[j]; p[j]=tmp; }
 
     int time = 0;
-
-    for (auto &p : list) {
-        if (time < p.arrivalTime)
-            time = p.arrivalTime;
-
-        p.startTime = time;
-        p.finishTime = time + p.burstTime;
-        p.turnaroundTime = p.finishTime - p.arrivalTime;
-        p.waitingTime = p.turnaroundTime - p.burstTime;
-
-        time = p.finishTime;
+    for (int i = 0; i < n; i++) {
+        if (time < p[i].at) time = p[i].at;
+        time += p[i].bt;
+        p[i].tat = time - p[i].at;
+        p[i].wt  = p[i].tat - p[i].bt;
     }
-
-    cout << "\nFCFS Completed\n";
 }

@@ -3,16 +3,31 @@
 
 struct Process {
     int pid;
-    int arrivalTime;
-    int burstTime;
+    union {
+        int arrivalTime;
+        int at;
+    };
+    union {
+        int burstTime;
+        int bt;
+    };
 
     int startTime;
     int finishTime;
-    int waitingTime;
-    int turnaroundTime;
+    union {
+        int waitingTime;
+        int wt;
+    };
+    union {
+        int turnaroundTime;
+        int tat;
+    };
 
     int priority;
-    int remainingTime;
+    union {
+        int remainingTime;
+        int rt;
+    };
 
     bool completed;
     bool inQueue;

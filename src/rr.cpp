@@ -1,61 +1,43 @@
-#include "../include/rr.h"
+#include "rr.h"
 #include <queue>
-#include <iostream>
 using namespace std;
 
-void runRR(vector<Process>& list, int timeQuantum) {
-    int n = static_cast<int>(list.size());
-
-    for (auto &p : list) {
-        p.remainingTime = p.burstTime;
-        p.completed = false;
-        p.inQueue = false;
-    }
+void roundRobin(Process p[], int n, int tq) {
+    for (int i = 0; i < n; i++) { p[i].rt = p[i].bt; p[i].wt = 0; p[i].tat = 0; }
 
     queue<int> q;
-    int time = 0;
-    int completedCount = 0;
+    vector<bool> inQueue(n, false);
+    int time = 0, completed = 0;
 
-    while (completedCount < n) {
-        for (int i = 0; i < n; i++) {
-            if (!list[i].completed && !list[i].inQueue && list[i].arrivalTime <= time) {
-                q.push(i);
-                list[i].inQueue = true;
-            }
-        }
+    // sort by arrival time first
+    for (int i = 0; i < n-1; i++)
+        for (int j = i+1; j < n; j++)
+            if (p[j].at < p[i].at) { Process tmp=p[i]; p[i]=p[j]; p[j]=tmp; }
 
+    for (int i = 0; i < n; i++)
+        if (p[i].at <= time) { q.push(i); inQueue[i] = true; }
+
+    while (completed < n) {
         if (q.empty()) {
             time++;
+            for (int i = 0; i < n; i++)
+                if (!inQueue[i] && p[i].at <= time) { q.push(i); inQueue[i] = true; }
             continue;
         }
-
-        int idx = q.front();
-        q.pop();
-
-        if (list[idx].remainingTime == list[idx].burstTime)
-            list[idx].startTime = time;
-
-        int exec = min(timeQuantum, list[idx].remainingTime);
-        list[idx].remainingTime -= exec;
+        int idx = q.front(); q.pop();
+        int exec = (p[idx].rt < tq) ? p[idx].rt : tq;
+        p[idx].rt -= exec;
         time += exec;
 
-        for (int i = 0; i < n; i++) {
-            if (!list[i].completed && !list[i].inQueue && list[i].arrivalTime <= time) {
-                q.push(i);
-                list[i].inQueue = true;
-            }
-        }
+        for (int i = 0; i < n; i++)
+            if (!inQueue[i] && p[i].at <= time) { q.push(i); inQueue[i] = true; }
 
-        if (list[idx].remainingTime == 0) {
-            list[idx].finishTime = time;
-            list[idx].turnaroundTime = list[idx].finishTime - list[idx].arrivalTime;
-            list[idx].waitingTime = list[idx].turnaroundTime - list[idx].burstTime;
-            list[idx].completed = true;
-            completedCount++;
+        if (p[idx].rt == 0) {
+            p[idx].tat = time - p[idx].at;
+            p[idx].wt  = p[idx].tat - p[idx].bt;
+            completed++;
         } else {
             q.push(idx);
         }
     }
-
-    cout << "\nRound Robin Completed\n";
 }

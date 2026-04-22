@@ -1,9 +1,6 @@
 #ifndef SJF_H
 #define SJF_H
-
-#include <vector>
 #include "process.h"
-
-void runSJF(std::vector<Process>& procs);
-
+void shortestJobFirst(Process p[], int n);       // Non-preemptive SJF
+void shortestRemainingTime(Process p[], int n);  // Preemptive SJF (SRTF)
 #endif
