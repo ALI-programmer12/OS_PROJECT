@@ -2,6 +2,7 @@
 #include "ranker.h"
 #include <iostream>
 #include <iomanip>
+#include <tuple>
 using namespace std;
 
 // Forward declarations — all use Process[]
@@ -15,6 +16,7 @@ void preemptivePriorityScheduling(Process[], int);
 void nonPreemptivePriorityScheduling(Process[], int);
 
 vector<Result> results;
+vector<tuple<int, int, int>> currentGantt;
 
 static float avgWT(Process p[], int n) {
     float s=0; for(int i=0;i<n;i++) s+=p[i].wt; return s/n;
@@ -38,9 +40,11 @@ void simulate(Process p[], int n, string name, int algo, int quantum) {
         case 6: mlfqScheduling(p, n);                  break;
         case 7: preemptivePriorityScheduling(p, n);    break;
         case 8: nonPreemptivePriorityScheduling(p, n); break;
-        default: cout<<"Invalid algo\n"; return;
+        default: break;
     }
 
+    // Commented out console output for GUI
+    /*
     cout << "\n------------------------------------------------------------\n";
     cout << " " << name << "\n";
     cout << "------------------------------------------------------------\n";
@@ -59,6 +63,9 @@ void simulate(Process p[], int n, string name, int algo, int quantum) {
     float w = avgWT(p,n), t = avgTAT(p,n);
     cout << "\n  Avg Waiting Time   : " << fixed << setprecision(2) << w;
     cout << "\n  Avg Turnaround Time: " << t << "\n";
+    */
 
-    results.push_back({name, w, t});
+    float w = avgWT(p,n), t = avgTAT(p,n);
+    results.emplace_back(name, w, t, currentGantt);
+    currentGantt.clear();
 }

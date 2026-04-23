@@ -1,5 +1,7 @@
 #include "rr.h"
+#include "simulator.h"
 #include <queue>
+#include <tuple>
 using namespace std;
 
 void roundRobin(Process p[], int n, int tq) {
@@ -26,6 +28,9 @@ void roundRobin(Process p[], int n, int tq) {
         }
         int idx = q.front(); q.pop();
         int exec = (p[idx].rt < tq) ? p[idx].rt : tq;
+        for (int t = 0; t < exec; t++) {
+            currentGantt.push_back(make_tuple(time + t, p[idx].pid, 1));
+        }
         p[idx].rt -= exec;
         time += exec;
 
