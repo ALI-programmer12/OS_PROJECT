@@ -14,7 +14,7 @@ using namespace std;
 //  LAYOUT CONSTANTS
 // ─────────────────────────────────────────────
 static const int SW  = 1400;
-static const int SH  = 760;
+static const int SH  = 800;
 static const int PAD = 48;
 
 // ─────────────────────────────────────────────
