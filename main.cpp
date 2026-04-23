@@ -46,7 +46,7 @@ int main() {
     cout << "\n\nRunning all scheduling algorithms...\n";
 
     // Run all algorithms
-    simulate(p, n, "1. FCFS (First Come First Serve)",           1);
+    simulate(p, n, "1. FCFS First Come First Serve",           1);
     simulate(p, n, "2. Round Robin (RR)",                        2, rqTimequantum);
     simulate(p, n, "3. SJF Non-Preemptive",                      3);
     simulate(p, n, "4. SRTF (Shortest Remaining Time First)",    4);
