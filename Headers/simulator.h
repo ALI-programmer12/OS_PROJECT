@@ -1,11 +1,19 @@
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
-#include "process.h"
-#include "result.h"
-#include <vector>
+#pragma once
 #include <string>
+#include <vector>
 #include <tuple>
+#include "process.h"
+
+struct Result {
+    std::string name;
+    double avgWT  = 0;
+    double avgTAT = 0;
+    std::vector<std::tuple<int,int,int>> gantt;  /* (start, pid, duration) */
+    std::vector<Process> procs;                  /* per-process results */
+};
+
 extern std::vector<Result> results;
-extern std::vector<std::tuple<int, int, int>> currentGantt;
-void simulate(Process p[], int n, std::string name, int algo, int quantum = 4);
-#endif
+
+/* algoId: 1=FCFS 2=RR 3=SJF 4=SRTF 5=LRTF 6=MLFQ 7=PrePriority 8=NPPriority */
+void simulate(Process *p, int n, const std::string &name,
+              int algoId, int quantum = 4);

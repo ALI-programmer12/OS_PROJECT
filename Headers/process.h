@@ -1,14 +1,11 @@
-#ifndef PROCESS_H
-#define PROCESS_H
+#pragma once
 
 struct Process {
-    int pid;
-    int at;   // Arrival Time
-    int bt;   // Burst Time
-    int pr;   // Priority (lower = higher priority)
-    int rt;   // Remaining Time
-    int wt;   // Waiting Time
-    int tat;  // Turnaround Time
+    int pid = 0;   /* process id                  */
+    int at  = 0;   /* arrival time                */
+    int bt  = 0;   /* burst time (original)       */
+    int rt  = 0;   /* remaining time (simulator)  */
+    int pr  = 0;   /* priority (lower = higher)   */
+    int wt  = 0;   /* waiting time  (output)      */
+    int tat = 0;   /* turnaround    (output)       */
 };
-
-#endif

@@ -4,14 +4,13 @@
 #include <tuple>
 using namespace std;
 
-void roundRobin(Process p[], int n, int tq) {
+void roundRobin(Process p[], int n, int tq, vector<tuple<int,int,int>>& gantt) {
     for (int i = 0; i < n; i++) { p[i].rt = p[i].bt; p[i].wt = 0; p[i].tat = 0; }
 
     queue<int> q;
     vector<bool> inQueue(n, false);
     int time = 0, completed = 0;
 
-    // sort by arrival time first
     for (int i = 0; i < n-1; i++)
         for (int j = i+1; j < n; j++)
             if (p[j].at < p[i].at) { Process tmp=p[i]; p[i]=p[j]; p[j]=tmp; }
@@ -29,7 +28,7 @@ void roundRobin(Process p[], int n, int tq) {
         int idx = q.front(); q.pop();
         int exec = (p[idx].rt < tq) ? p[idx].rt : tq;
         for (int t = 0; t < exec; t++) {
-            currentGantt.push_back(make_tuple(time + t, p[idx].pid, 1));
+            gantt.push_back(make_tuple(time + t, p[idx].pid, 1));
         }
         p[idx].rt -= exec;
         time += exec;

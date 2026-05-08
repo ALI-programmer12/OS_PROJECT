@@ -8,10 +8,10 @@
 
 struct Result {
     std::string name;
-    float avgWT;
-    float avgTAT;
+    double avgWT;
+    double avgTAT;
     std::vector<std::tuple<int, int, int>> gantt;
-    Result(std::string n, float wt, float tat, std::vector<std::tuple<int, int, int>> g) : name(n), avgWT(wt), avgTAT(tat), gantt(g) {}
+    Result(std::string n, double wt, double tat, std::vector<std::tuple<int, int, int>> g) : name(n), avgWT(wt), avgTAT(tat), gantt(g) {}
 };
 
 #endif

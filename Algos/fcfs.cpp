@@ -4,8 +4,7 @@
 #include <tuple>
 using namespace std;
 
-void firstComeFirstServe(Process p[], int n) {
-    // sort by arrival time
+void firstComeFirstServe(Process p[], int n, vector<tuple<int,int,int>>& gantt) {
     for (int i = 0; i < n-1; i++)
         for (int j = i+1; j < n; j++)
             if (p[j].at < p[i].at) { Process tmp=p[i]; p[i]=p[j]; p[j]=tmp; }
@@ -13,7 +12,7 @@ void firstComeFirstServe(Process p[], int n) {
     int time = 0;
     for (int i = 0; i < n; i++) {
         if (time < p[i].at) time = p[i].at;
-        currentGantt.push_back(make_tuple(time, p[i].pid, p[i].bt));
+        gantt.push_back(make_tuple(time, p[i].pid, p[i].bt));
         time += p[i].bt;
         p[i].tat = time - p[i].at;
         p[i].wt  = p[i].tat - p[i].bt;
