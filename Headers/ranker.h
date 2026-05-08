@@ -1,7 +1,3 @@
-#ifndef RANKER_H
-#define RANKER_H
-#include <vector>
-#include "result.h"
-extern std::vector<Result> results;
+/* ranker.h */
+#pragma once
 void rankAlgorithms();
-#endif

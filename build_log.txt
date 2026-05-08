@@ -1,0 +1,15 @@
+mingw32-make main
+make[1]: Entering directory 'D:/OS_PROJECT'
+g++ -o main main.cpp ranker.cpp simulator.cpp Algos/LRTF.cpp Algos/MLFQ.cpp Algos/Non-Preemptive_Priorityscheduling.cpp Algos/Preemptive_Priority_scheduling.cpp Algos/fcfs.cpp Algos/rr.cpp Algos/sjf.cpp -Wall -std=c++14 -D_DEFAULT_SOURCE -Wno-missing-braces -g -O0 C:/raylib/raylib/src/raylib.rc.data -I. -IHeaders -IC:/raylib/raylib/src -IC:/raylib/raylib/src/external -L. -LC:/raylib/raylib/src -LC:/raylib/raylib/src -lraylib -lopengl32 -lgdi32 -lwinmm -DPLATFORM_DESKTOP
+main.cpp: In function 'void DrawGanttChart(const std::vector<std::tuple<int, int, int> >&, int, int, int)':
+main.cpp:98:16: warning: structured bindings only available with '-std=c++17' or '-std=gnu++17' [-Wc++17-extensions]
+   98 |     for (auto &[s, pid, d] : gantt)
+      |                ^
+main.cpp:105:16: warning: structured bindings only available with '-std=c++17' or '-std=gnu++17' [-Wc++17-extensions]
+  105 |     for (auto &[start, pid, dur] : gantt) {
+      |                ^
+simulator.cpp: In function 'std::vector<std::tuple<int, int, int> > mergeGantt(const std::vector<std::tuple<int, int, int> >&)':
+simulator.cpp:19:16: warning: structured bindings only available with '-std=c++17' or '-std=gnu++17' [-Wc++17-extensions]
+   19 |     for (auto& [s, pid, d] : raw) {
+      |                ^
+make[1]: Leaving directory 'D:/OS_PROJECT'
