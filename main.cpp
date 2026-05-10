@@ -11,7 +11,7 @@
 
 using namespace std;
 
-// ---------------------------------------------------------------------------
+
 // Global Constants and UI Colors
 // ---------------------------------------------------------------------------
 static const int SW  = 1400;
@@ -36,14 +36,20 @@ static const Color PROC_COL[] = {
 };
 static const int PALETTE_SZ = 6;
 
-// ---------------------------------------------------------------------------
+
 // Helper Functions
 // ---------------------------------------------------------------------------
 static Color procColor(int pid) {
+    // If PID is 0 (Idle) or negative (Invalid/Error), return a neutral gray
     if (pid <= 0) return (Color){ 60, 60, 70, 255 };
-    return PROC_COL[(pid - 1) % PALETTE_SZ];
+    
+    // Use an unsigned cast or absolute value to ensure the index is never negative
+    // and ensure PALETTE_SZ is greater than 0
+    int index = (pid - 1);
+    if (index < 0) index = 0; 
+    
+    return PROC_COL[index % PALETTE_SZ];
 }
-
 static void Separator(int y) {
     DrawLine(PAD, y, SW - PAD, y, C_BORDER);
 }
@@ -79,12 +85,20 @@ static void TextCentre(const char *s, int y, int sz, Color col) {
 static void InputField(Rectangle r, const char *label, const string &val,
                        bool active, bool labelAbove = true) {
     int labelY = labelAbove ? (int)(r.y - 24) : (int)(r.y + (r.height - 18) / 2);
-    DrawText(label, (int)r.x, labelY, 17, active ? C_ACCENT : C_MUTED);
+    DrawText(label, (int)r.x, labelY, 17, active ? C_ACCENT : C_MUTED); 
     DrawRectangleRounded(r, 0.15f, 8, active ? (Color){25,40,75,255} : C_CARD);
     DrawRectangleRoundedLines(r, 0.15f, 8, active ? C_ACCENT : C_BORDER);
     string display = val + (active && ((int)(GetTime() * 2) % 2 == 0) ? "|" : "");
     DrawText(display.c_str(), (int)r.x + 10,
              (int)(r.y + (r.height - 18) / 2), 18, C_TEXT);
+}
+
+static int safe_stoi(const string &s, int default_val = 0) {
+    try {
+        return stoi(s);
+    } catch (...) {
+        return default_val;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +174,7 @@ static const char* ALGO_NAMES[] = {
     "Priority (Non-Pre)",
     "Priority (Pre)",
     "MLFQ",
-    "\xe2\x9a\xa1 Compare All"
+    "Compare All"
 };
 static const int ALGO_COUNT = 9;   // includes Compare All
 
@@ -177,6 +191,7 @@ int main() {
     if (bgSound.frameCount > 0) PlaySound(bgSound);
     Texture2D bgTexture = FileExists("images/bg.jpg")
         ? LoadTexture("images/bg.jpg") : (Texture2D){0};
+    // Texture2D bgTexture = (Texture2D){0};
 
     State  state      = INPUT_NUM;
     int    numProc    = 0;
@@ -208,12 +223,17 @@ int main() {
 
         if (key >= 48 && key <= 57) {
             char c = (char)key;
-            if (state == INPUT_NUM)          numStr += c;
-            else if (state == INPUT_QUANTUM)  qStr   += c;
+            if (state == INPUT_NUM)
+                numStr += c;
+            else if (state == INPUT_QUANTUM) 
+                 qStr   += c;
             else if (state == INPUT_PROCESSES) {
-                if (activeField == 0)          procInputs[curProc].at_s += c;
-                else if (activeField == 1)     procInputs[curProc].bt_s += c;
-                else if (activeField == 2)     procInputs[curProc].pr_s += c;
+                if (activeField == 0)   
+                    procInputs[curProc].at_s += c;
+                else if (activeField == 1)    
+                    procInputs[curProc].bt_s += c;
+                else if (activeField == 2)   
+                    procInputs[curProc].pr_s += c;
             }
         }
 
@@ -238,7 +258,8 @@ int main() {
             TextCentre("Step 1: System Config", 100, 20, C_ACCENT);
             InputField({SW/2-150, 200, 300, 50}, "How many processes?", numStr, true);
             if (Button({SW/2-80, 280, 160, 40}, "Continue") && !numStr.empty()) {
-                numProc = stoi(numStr);
+                numProc = safe_stoi(numStr, 0);
+                if (numProc <= 0) numProc = 1;  // At least 1 process required
                 numProc = min(numProc, 10);  // Cap to prevent long simulations
                 procInputs.resize(numProc);
                 state = INPUT_PRIORITY;
@@ -271,12 +292,12 @@ int main() {
             if (Button({SW/2-80, 380, 160, 40},
                        curProc < numProc-1 ? "Next Process" : "Finalize")) {
                 procInputs[curProc].at =
-                    procInputs[curProc].at_s.empty() ? 0 : stoi(procInputs[curProc].at_s);
+                    safe_stoi(procInputs[curProc].at_s, 0);
                 procInputs[curProc].bt =
-                    procInputs[curProc].bt_s.empty() ? 1 : stoi(procInputs[curProc].bt_s);
+                    safe_stoi(procInputs[curProc].bt_s, 1);
                 if (hasPriority)
                     procInputs[curProc].pr =
-                        procInputs[curProc].pr_s.empty() ? 0 : stoi(procInputs[curProc].pr_s);
+                        safe_stoi(procInputs[curProc].pr_s, 0);
 
                 // Cap values to prevent excessive simulation time
                 procInputs[curProc].at = min(procInputs[curProc].at, 100);
@@ -291,19 +312,31 @@ int main() {
 
         // ---- Step 4: Quantum ----
         else if (state == INPUT_QUANTUM) {
-            TextCentre("Step 4: Time Quantum", 100, 20, C_ACCENT);
-            InputField({SW/2-150, 200, 300, 50},
-                       "Time Quantum (for RR / MLFQ)", qStr, true);
-            if (Button({SW/2-80, 280, 160, 40}, "Run Engine")) {
+            TextCentre("Step 4: Time Quantum for RR / MLFQ", 100, 20, C_ACCENT);
+           
+            InputField({SW/2-150, 200, 300, 50}, "Time Quantum", qStr, true);
+
+            bool goNext = Button({SW/2-80, 280, 160, 40}, "Continue");
+            if (IsKeyPressed(KEY_ENTER)) goNext = true;
+
+            if (goNext) {
+                if (numProc <= 0 || numProc > 10 || (int)procInputs.size() < numProc) {
+                    numProc = max(1, min(numProc, 10));
+                    procInputs.resize(numProc);
+                }
                 if (qStr.empty()) qStr = "4";
-                if (p) delete[] p;
+                if (safe_stoi(qStr, 0) <= 0) qStr = "4";
+
+                if (p) { delete[] p; p = nullptr; }
                 p = new Process[numProc];
-                for (int i = 0; i < numProc; i++) {
-                    p[i] = { i+1,
-                              procInputs[i].at,
-                              procInputs[i].bt,
-                              procInputs[i].bt,
-                              hasPriority ? procInputs[i].pr : 0, 0, 0 };
+                for (int i = 0; i < numProc && i < (int)procInputs.size(); i++) {
+                    p[i].pid = i + 1;
+                    p[i].at  = procInputs[i].at;
+                    p[i].bt  = max(1, procInputs[i].bt);
+                    p[i].rt  = p[i].bt;
+                    p[i].pr  = hasPriority ? procInputs[i].pr : 0;
+                    p[i].wt  = 0;
+                    p[i].tat = 0;
                 }
                 state = SELECT_ALGO;
             }
@@ -313,84 +346,106 @@ int main() {
         else if (state == SELECT_ALGO) {
             TextCentre("Choose Algorithm to Analyze", 75, 24, C_TEXT);
 
-            const float BTN_W = 290, BTN_H = 50, GAP = 14;
-            const float COL0  = SW/2 - BTN_W - GAP/2;
-            const float COL1  = SW/2 + GAP/2;
-            float startY = 130;
-
-            // 7 algo buttons in 2 columns, Compare All full-width at bottom
-            for (int i = 0; i < ALGO_COUNT - 1; i++) {
-                float bx = (i % 2 == 0) ? COL0 : COL1;
-                float by = startY + (i / 2) * (BTN_H + GAP);
-                bool isPrio = (ALGO_IDS[i] == 5 || ALGO_IDS[i] == 7);
-                Color accent = isPrio ? C_ACCENT2 : C_ACCENT;
-                if (Button({bx, by, BTN_W, BTN_H}, ALGO_NAMES[i], false, accent)) {
-                    results.clear();
-                    int q = qStr.empty() ? 4 : stoi(qStr);
-                    simulate(p, numProc, ALGO_NAMES[i], ALGO_IDS[i], q);
-                    state = VIEW_ALGO;
+            if (!p || numProc <= 0) {
+                TextCentre("Error: Invalid process data", 400, 18, C_DANGER);
+                if (Button({SW/2-80, 500, 160, 40}, "Restart")) {
+                    if (p) delete[] p;
+                    p = nullptr;
+                    numProc = 0;
+                    state = INPUT_NUM;
                 }
-            }
+            } else {
+                const float BTN_W = 290, BTN_H = 50, GAP = 14;
+                const float COL0  = SW/2 - BTN_W - GAP/2;
+                const float COL1  = SW/2 + GAP/2;
+                float startY = 130;
 
-            // "Compare All" full-width button
-            int rows = (ALGO_COUNT - 1 + 1) / 2;  // ceil((ALGO_COUNT-1)/2)
-            float compareY = startY + rows * (BTN_H + GAP) + GAP;
-            if (Button({SW/2 - 200, compareY, 400, BTN_H},
-                       ALGO_NAMES[ALGO_COUNT-1], false, C_WARN)) {
-                results.clear();
-                int q = qStr.empty() ? 4 : stoi(qStr);
-                for (int i = 0; i < ALGO_COUNT - 1; i++)
-                    simulate(p, numProc, ALGO_NAMES[i], ALGO_IDS[i], q);
-                rankAlgorithms();
-                state = COMPARE;
+                // 7 algo buttons in 2 columns, Compare All full-width at bottom
+                for (int i = 0; i < ALGO_COUNT - 1; i++) {
+                    float bx = (i % 2 == 0) ? COL0 : COL1;
+                    float by = startY + (i / 2) * (BTN_H + GAP);
+                    bool isPrio = (ALGO_IDS[i] == 5 || ALGO_IDS[i] == 7);
+                    Color accent = isPrio ? C_ACCENT2 : C_ACCENT;
+                    if (Button({bx, by, BTN_W, BTN_H}, ALGO_NAMES[i], false, accent)) {
+                        results.clear();
+                        int q = safe_stoi(qStr, 4);
+                        if (q <= 0) q = 4;
+                        // Restore rt before each simulation (simulate() copies, but keep orig clean)
+                        for (int j = 0; j < numProc; j++) { p[j].rt = p[j].bt; p[j].wt = 0; p[j].tat = 0; }
+                        simulate(p, numProc, ALGO_NAMES[i], ALGO_IDS[i], q);
+                        if (!results.empty()) state = VIEW_ALGO;
+                    }
+                }
+
+                // "Compare All" full-width button
+                int rows = (ALGO_COUNT - 1 + 1) / 2;
+                float compareY = startY + rows * (BTN_H + GAP) + GAP;
+                if (Button({SW/2 - 200, compareY, 400, BTN_H},
+                           ALGO_NAMES[ALGO_COUNT-1], false, C_WARN)) {
+                    results.clear();
+                    int q = safe_stoi(qStr, 4);
+                    if (q <= 0) q = 4;
+                    for (int i = 0; i < ALGO_COUNT - 1; i++) {
+                        // Restore rt/wt/tat for each fresh simulation
+                        for (int j = 0; j < numProc; j++) { p[j].rt = p[j].bt; p[j].wt = 0; p[j].tat = 0; }
+                        simulate(p, numProc, ALGO_NAMES[i], ALGO_IDS[i], q);
+                    }
+                    rankAlgorithms();
+                    state = COMPARE;
+                }
             }
         }
 
         // ---- Single algorithm result view ----
-        else if (state == VIEW_ALGO && !results.empty()) {
-            Result &r = results.back();
-            TextCentre(TextFormat("Analysis: %s", r.name.c_str()), 70, 24, C_ACCENT2);
-            Separator(115);
+        else if (state == VIEW_ALGO) {
+            if (results.empty()) {
+                TextCentre("No results available", 400, 18, C_DANGER);
+                if (Button({SW/2-80, 500, 160, 40}, "Back")) state = SELECT_ALGO;
+            } else {
+                Result &r = results.back();
+                TextCentre(TextFormat("Analysis: %s", r.name.c_str()), 70, 24, C_ACCENT2);
+                Separator(115);
 
-            // Stats
-            DrawText(TextFormat("Avg Waiting Time: %.2f    |    Avg Turnaround Time: %.2f",
-                                r.avgWT, r.avgTAT),
-                     PAD, 130, 20, C_TEXT);
+                // Stats
+                DrawText(TextFormat("Avg Waiting Time: %.2f    |    Avg Turnaround Time: %.2f",
+                                    r.avgWT, r.avgTAT),
+                         PAD, 130, 20, C_TEXT);
 
-            // Gantt chart
-            DrawText("Gantt Chart", PAD, 185, 18, C_MUTED);
-            DrawGanttChart(r.gantt, PAD, 215, SW - PAD*2);
+                // Gantt chart
+                DrawText("Gantt Chart", PAD, 185, 18, C_MUTED);
+                DrawGanttChart(r.gantt, PAD, 215, SW - PAD*2);
 
-            // Process table
-            Separator(310);
-            DrawText("PID", PAD,      330, 17, C_MUTED);
-            DrawText("Arrival",  PAD+80,  330, 17, C_MUTED);
-            DrawText("Burst",    PAD+180, 330, 17, C_MUTED);
-            DrawText("Priority", PAD+280, 330, 17, C_MUTED);
-            DrawText("WT",       PAD+380, 330, 17, C_MUTED);
-            DrawText("TAT",      PAD+460, 330, 17, C_MUTED);
+                // Process table
+                Separator(310);
+                DrawText("PID", PAD,      330, 17, C_MUTED);
+                DrawText("Arrival",  PAD+80,  330, 17, C_MUTED);
+                DrawText("Burst",    PAD+180, 330, 17, C_MUTED);
+                DrawText("Priority", PAD+280, 330, 17, C_MUTED);
+                DrawText("WT",       PAD+380, 330, 17, C_MUTED);
+                DrawText("TAT",      PAD+460, 330, 17, C_MUTED);
 
-            const auto &displayProcs = r.procs;
-            if (!displayProcs.empty()) {
-                for (int i = 0; i < (int)displayProcs.size(); i++) {
-                    int ry = 360 + i * 32;
-                    Color rc = (i % 2 == 0) ? C_CARD : C_CARD2;
-                    DrawRectangle(PAD, ry, SW - PAD*2, 28, rc);
-                    DrawText(TextFormat("P%d",   displayProcs[i].pid), PAD,      ry+6, 16, procColor(displayProcs[i].pid));
-                    DrawText(TextFormat("%d",    displayProcs[i].at),  PAD+80,   ry+6, 16, C_TEXT);
-                    DrawText(TextFormat("%d",    displayProcs[i].bt),  PAD+180,  ry+6, 16, C_TEXT);
-                    DrawText(TextFormat("%d",    displayProcs[i].pr),  PAD+280,  ry+6, 16, C_TEXT);
-                    DrawText(TextFormat("%d",    displayProcs[i].wt),  PAD+380,  ry+6, 16, C_ACCENT2);
-                    DrawText(TextFormat("%d",    displayProcs[i].tat), PAD+460,  ry+6, 16, C_WARN);
+                const auto &displayProcs = r.procs;
+                if (!displayProcs.empty()) {
+                    for (int i = 0; i < (int)displayProcs.size(); i++) {
+                        int ry = 360 + i * 32;
+                        Color rc = (i % 2 == 0) ? C_CARD : C_CARD2;
+                        DrawRectangle(PAD, ry, SW - PAD*2, 28, rc);
+                        DrawText(TextFormat("P%d",   displayProcs[i].pid), PAD,      ry+6, 16, procColor(displayProcs[i].pid));
+                        DrawText(TextFormat("%d",    displayProcs[i].at),  PAD+80,   ry+6, 16, C_TEXT);
+                        DrawText(TextFormat("%d",    displayProcs[i].bt),  PAD+180,  ry+6, 16, C_TEXT);
+                        DrawText(TextFormat("%d",    displayProcs[i].pr),  PAD+280,  ry+6, 16, C_TEXT);
+                        DrawText(TextFormat("%d",    displayProcs[i].wt),  PAD+380,  ry+6, 16, C_ACCENT2);
+                        DrawText(TextFormat("%d",    displayProcs[i].tat), PAD+460,  ry+6, 16, C_WARN);
+                    }
                 }
-            }
 
-            if (Button({PAD, SH-72, 130, 40}, "\xe2\x86\x90 Back")) state = SELECT_ALGO;
+                if (Button({PAD, SH-72, 130, 40}, "Back")) state = SELECT_ALGO;
+            }
         }
 
         // ---- Compare All results ----
         else if (state == COMPARE) {
-            TextCentre("Algorithm Ranking (Best → Worst Avg WT)", 70, 22, C_WARN);
+            TextCentre("Algorithm Ranking ", 70, 22, C_WARN);
             Separator(110);
 
             // Column headers
@@ -421,9 +476,9 @@ int main() {
                 }
             }
 
-            DrawText("(Click a row to view its Gantt chart)",
+            DrawText("Click a row to view its Gantt chart",
                      PAD, SH-110, 15, C_MUTED);
-            if (Button({PAD, SH-72, 130, 40}, "\xe2\x86\x90 Back")) state = SELECT_ALGO;
+            if (Button({PAD, SH-72, 130, 40}, "Back")) state = SELECT_ALGO;
         }
 
         EndDrawing();
@@ -436,3 +491,4 @@ int main() {
     CloseWindow();
     return 0;
 }
+ 

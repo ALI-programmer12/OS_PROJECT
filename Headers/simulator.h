@@ -9,7 +9,7 @@ struct Result {
     double avgWT  = 0;
     double avgTAT = 0;
     std::vector<std::tuple<int,int,int>> gantt;  /* (start, pid, duration) */
-    std::vector<Process> procs;                  /* per-process results */
+    std::vector<Process> procs;                  /* per-process results     */
 };
 
 extern std::vector<Result> results;
