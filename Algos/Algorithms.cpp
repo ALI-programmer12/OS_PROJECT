@@ -30,27 +30,37 @@ void firstComeFirstServe(Process p[], int n, vector<tuple<int,int,int>>& gantt) 
 
 void roundRobin(Process p[], int n, int tq, vector<tuple<int,int,int>>& gantt) {
     for (int i = 0; i < n; i++) p[i].rt = p[i].bt;
+
+    // Sort arrivals by AT then PID for deterministic tie-breaking
+    vector<int> idx(n);
+    for(int i=0; i<n; i++) idx[i] = i;
+    stable_sort(idx.begin(), idx.end(), [&](int a, int b) {
+        if (p[a].at != p[b].at) return p[a].at < p[b].at;
+        return p[a].pid < p[b].pid;
+    });
+
     queue<int> q;
     int time = 0, completed = 0;
     int curProc = -1, curUsed = 0;
     vector<bool> inSys(n, false);
 
     while (completed < n) {
-        // 1. Arrivals
-        for (int i = 0; i < n; i++) {
-            if (p[i].at == time && !inSys[i] && p[i].rt > 0) {
+        // 1. Handle Arrivals first at this time tick
+        for (int i : idx) {
+            if (p[i].at <= time && !inSys[i] && p[i].rt > 0) {
                 q.push(i);
                 inSys[i] = true;
             }
         }
 
-        // 2. Quantum check
+        // 2. Check if current process quantum expired at this tick
         if (curProc != -1 && curUsed >= tq) {
-            q.push(curProc);
+            q.push(curProc); // Goes behind new arrivals from step 1
             curProc = -1;
+            curUsed = 0;
         }
 
-        // 3. Selection
+        // 3. Selection: if nothing running, pick next
         if (curProc == -1 && !q.empty()) {
             curProc = q.front();
             q.pop();
@@ -73,8 +83,10 @@ void roundRobin(Process p[], int n, int tq, vector<tuple<int,int,int>>& gantt) {
                 p[curProc].wt = p[curProc].tat - p[curProc].bt;
                 completed++;
                 curProc = -1;
+                curUsed = 0;
             }
         } else {
+            // Idle jump
             int nextAt = INT_MAX;
             for (int i = 0; i < n; i++) if (p[i].rt > 0 && p[i].at > time) nextAt = min(nextAt, p[i].at);
             if (nextAt != INT_MAX) time = nextAt;
@@ -184,37 +196,52 @@ void lrtfScheduling(Process p[], int n, vector<tuple<int,int,int>>& gantt) {
 void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>& gantt) {
     for (int i = 0; i < n; i++) p[i].rt = p[i].bt;
     
+    vector<int> idx(n);
+    for(int i=0; i<n; i++) idx[i] = i;
+    stable_sort(idx.begin(), idx.end(), [&](int a, int b) {
+        if (p[a].at != p[b].at) return p[a].at < p[b].at;
+        return p[a].pid < p[b].pid;
+    });
+
     queue<int> q1, q2, q3;
     int q1_tq = quantum;
     int q2_tq = quantum * 2;
+    int q3_tq = quantum * 4; 
     
     int time = 0, completed = 0;
-    int curProc = -1, curQ = 0, curUsed = 0;
+    int curProc = -1, curQ = 0;
+    vector<int> usedInLevel(n, 0); // Persist quantum usage across preemptions
     vector<bool> inSys(n, false);
 
     while (completed < n) {
         // 1. Arrivals
-        for (int i = 0; i < n; i++) {
-            if (p[i].at == time && !inSys[i] && p[i].rt > 0) {
+        for (int i : idx) {
+            if (p[i].at <= time && !inSys[i] && p[i].rt > 0) {
                 q1.push(i);
                 inSys[i] = true;
             }
         }
 
-        // 2. Quantum check (Feedback)
+        // 2. Quantum Feedback (Demotion happens only on FULL quantum expiration)
         if (curProc != -1) {
             bool expired = false;
-            if (curQ == 1 && curUsed >= q1_tq) {
+            if (curQ == 1 && usedInLevel[curProc] >= q1_tq) {
                 q2.push(curProc);
                 expired = true;
-            } else if (curQ == 2 && curUsed >= q2_tq) {
+            } else if (curQ == 2 && usedInLevel[curProc] >= q2_tq) {
                 q3.push(curProc);
                 expired = true;
+            } else if (curQ == 3 && usedInLevel[curProc] >= q3_tq) {
+                q3.push(curProc); // RR within bottom queue
+                expired = true;
             }
-            if (expired) curProc = -1;
+            if (expired) {
+                usedInLevel[curProc] = 0; // Reset only on demotion/cycle
+                curProc = -1;
+            }
         }
 
-        // 3. Priority Preemption
+        // 3. Priority Preemption (Higher queue arrival interrupts lower queue immediately)
         if (curProc != -1) {
             bool pre = false;
             if (curQ == 2 && !q1.empty()) pre = true;
@@ -223,6 +250,7 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
             if (pre) {
                 if (curQ == 2) q2.push(curProc);
                 else q3.push(curProc);
+                // usedInLevel[curProc] is NOT reset here!
                 curProc = -1;
             }
         }
@@ -232,7 +260,7 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
             if (!q1.empty())      { curProc = q1.front(); q1.pop(); curQ = 1; }
             else if (!q2.empty()) { curProc = q2.front(); q2.pop(); curQ = 2; }
             else if (!q3.empty()) { curProc = q3.front(); q3.pop(); curQ = 3; }
-            curUsed = 0;
+            // Note: usedInLevel[curProc] is preserved if it was preempted
         }
 
         // 5. Execution
@@ -243,7 +271,7 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
                 gantt.push_back({time, p[curProc].pid, 1});
 
             p[curProc].rt--;
-            curUsed++;
+            usedInLevel[curProc]++;
             time++;
 
             if (p[curProc].rt == 0) {
