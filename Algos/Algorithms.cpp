@@ -189,8 +189,7 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
     int q2_tq = quantum * 2;
     
     int time = 0, completed = 0;
-    int curProc = -1, curQ = 0;
-    vector<int> qUsed(n, 0); // Accumulate quantum usage per process
+    int curProc = -1, curQ = 0, curUsed = 0;
     vector<bool> inSys(n, false);
 
     while (completed < n) {
@@ -202,7 +201,20 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
             }
         }
 
-        // 2. Preemption
+        // 2. Quantum check (Feedback)
+        if (curProc != -1) {
+            bool expired = false;
+            if (curQ == 1 && curUsed >= q1_tq) {
+                q2.push(curProc);
+                expired = true;
+            } else if (curQ == 2 && curUsed >= q2_tq) {
+                q3.push(curProc);
+                expired = true;
+            }
+            if (expired) curProc = -1;
+        }
+
+        // 3. Priority Preemption
         if (curProc != -1) {
             bool pre = false;
             if (curQ == 2 && !q1.empty()) pre = true;
@@ -215,14 +227,15 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
             }
         }
 
-        // 3. Selection
+        // 4. Selection
         if (curProc == -1) {
             if (!q1.empty())      { curProc = q1.front(); q1.pop(); curQ = 1; }
             else if (!q2.empty()) { curProc = q2.front(); q2.pop(); curQ = 2; }
             else if (!q3.empty()) { curProc = q3.front(); q3.pop(); curQ = 3; }
+            curUsed = 0;
         }
 
-        // 4. Execution
+        // 5. Execution
         if (curProc != -1) {
             if (!gantt.empty() && get<1>(gantt.back()) == p[curProc].pid && get<0>(gantt.back()) + get<2>(gantt.back()) == time)
                 get<2>(gantt.back())++;
@@ -230,21 +243,13 @@ void mlfqScheduling(Process p[], int n, int quantum, vector<tuple<int,int,int>>&
                 gantt.push_back({time, p[curProc].pid, 1});
 
             p[curProc].rt--;
-            qUsed[curProc]++;
+            curUsed++;
             time++;
 
             if (p[curProc].rt == 0) {
                 p[curProc].tat = time - p[curProc].at;
                 p[curProc].wt = p[curProc].tat - p[curProc].bt;
                 completed++;
-                curProc = -1;
-            } else if (curQ == 1 && qUsed[curProc] >= q1_tq) {
-                q2.push(curProc);
-                qUsed[curProc] = 0; // Reset for next level
-                curProc = -1;
-            } else if (curQ == 2 && qUsed[curProc] >= q2_tq) {
-                q3.push(curProc);
-                qUsed[curProc] = 0; // Reset for next level
                 curProc = -1;
             }
         } else {
